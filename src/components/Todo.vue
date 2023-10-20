@@ -1,5 +1,5 @@
 <template>
-  <v-container style="max-width: 500px">
+  <v-container style="max-width: 500px" items="newTask">
     <v-text-field
       v-model="newTask"
       label="สิ่งที่คุณอยากทำคือ?"
@@ -88,12 +88,15 @@ export default {
       },
       {
         done: false,
-        text: "Fizzbuzz",
+        text: "ไปเที่ยวภูเก็ต",
       },
     ],
+    
+
     newTask: null,
   }),
 
+ 
   computed: {
     completedTasks() {
       return this.tasks.filter((task) => task.done).length;
@@ -105,8 +108,19 @@ export default {
       return this.tasks.length - this.completedTasks;
     },
   },
+  created() {
+  this.initialize();
+},
 
   methods: {
+    async initialize() {
+    this.newTask = [];
+      try {
+        var data = await this.axios.get("http://localhost:9000/todo");
+        console.log("data todo ====>", data);
+        this.newTask = data.data;
+      } catch (error) {}
+    },
     create() {
       this.tasks.push({
         done: false,

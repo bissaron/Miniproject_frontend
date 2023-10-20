@@ -3,7 +3,6 @@
     :headers="headers"
     :items="tracker"
     :search="search"
-    sort-by="calories"
     class="elevation-1"
   >
     <template v-slot:top>
@@ -29,6 +28,7 @@
               class="mb-2"
               v-bind="attrs"
               v-on="on"
+              @click="openDialog('add', defaultItem)"
               >เพิ่มข้อมูล</v-btn
             >
           </template>
@@ -56,7 +56,6 @@
                           readonly
                           v-on="on"
                           :rules="dataRules"
-                          
                         >
                         </v-text-field>
                       </template>
@@ -143,12 +142,11 @@
       <v-text style="margin-left: 50px">
         เงินออมทั้งหมด: {{ totalSavings }}
       </v-text>
-
     </template>
 
     <template v-slot:item.actions="{ item }">
-      <v-icon small class="mr-2" @click="editItem(item)"> mdi-pencil </v-icon>
-      <v-icon small @click="deleteItem(item)"> mdi-delete </v-icon>
+      <v-icon small outlined @click="openDialog('edit', item)" color="blue"> mdi-pencil </v-icon>
+      <v-icon small outlined @click="deleteItem(item)" color="red" class="ml-2"> mdi-delete </v-icon>
     </template>
     <template v-slot:no-data>
       <v-btn color="primary" @click="initialize"> Reset </v-btn>
@@ -163,11 +161,15 @@ export default {
   components: {
     Tabs,
     Table,
-    
   },
-  
 
   data: () => ({
+    date: "",
+    amount: "",
+    description: "",
+    type: "",
+    category: "",
+    balance: "",
     dataRules: [(v) => !!v || "กรุณากรอกข้อมูล"],
     amountRules: [
       (v) => !!v || "กรุณากรอกข้อมูล",
@@ -176,7 +178,7 @@ export default {
     dialogaddTransaction: false,
     dialogdeleteTransaction: false,
     search: "",
-    
+
     totalBalance: 0, // แต่งข้อมูลเพื่อรับค่า totalBalance
     totalIncome: 0, // แต่งข้อมูลเพื่อรับค่า totalIncome
     totalExpense: 0, // แต่งข้อมูลเพื่อรับค่า totalExpense
@@ -227,6 +229,9 @@ export default {
       category: "",
       balance: 0,
     },
+    formTitle: '',
+    idforDelete: '',
+    transaction_id: ''
   }),
 
   computed: {
@@ -234,7 +239,6 @@ export default {
       return this.editedIndex === -1 ? "เพิ่มข้อมูล" : "แก้ไขข้อมูล";
     },
 
-   
     totalBalance() {
       // คำนวณรายได้ทั้งหมด
       let totalIncome = this.tracker
@@ -287,72 +291,137 @@ export default {
   },
 
   methods: {
-    initialize() {
-      this.tracker = [
-        {
-          date: "2023-10-03",
-          amount: 20000,
-          description: 6.0,
-          type: "รายรับ",
-          category: 4.0,
-        },
-
-        {
-          date: "2023-10-03",
-          amount: 1000,
-          description: 6.0,
-          type: "รายจ่าย",
-          category: 4.0,
-        },
-        {
-          date: "2023-10-03",
-          amount: 1000,
-          description: 6.0,
-          type: "เงินออม",
-          category: 4.0,
-        },
-        {
-          date: "2023-10-03",
-          amount: 2000,
-          description: 6.0,
-          type: "เงินออม",
-          category: 4.0,
-        },
-      ];
+    async initialize() {
+      this.tracker = [];
+      try {
+        var data = await this.axios.get("http://localhost:9000/transaction");
+        console.log("data transaction ====>", data);
+        this.tracker = data.data;
+      } catch (error) {}
     },
+    // initialize() {
+    //   this.tracker = [
+    //     {
+    //       date: "2023-10-03",
+    //       amount: 20000,
+    //       description: 6.0,
+    //       type: "รายรับ",
+    //       category: 4.0,
+    //     },
+
+    //     {
+    //       date: "2023-10-03",
+    //       amount: 1000,
+    //       description: 6.0,
+    //       type: "รายจ่าย",
+    //       category: 4.0,
+    //     },
+    //     {
+    //       date: "2023-10-03",
+    //       amount: 1000,
+    //       description: 6.0,
+    //       type: "เงินออม",
+    //       category: 4.0,
+    //     },
+    //     {
+    //       date: "2023-10-03",
+    //       amount: 2000,
+    //       description: 6.0,
+    //       type: "เงินออม",
+    //       category: 4.0,
+    //     },
+    //   ];
+    // },
+    openDialog(Action, item) {
+  if (Action === "add") {
+    this.dialogaddTransaction = true;
+    this.formTitle = "เพิ่มข้อมูล";
+    this.editedItem = this.defaultItem;
+    this.transaction_id = "";
+  } else if (Action === "edit") {
+    this.formTitle = "แก้ไขข้อมูล";
+    this.dialogaddTransaction = true;
+    this.transaction_id = item.transaction_id;
+    this.date = item.date;
+    this.amount = item.amount;
+    this.description = item.description;
+    this.type = item.type;
+    this.category = item.category;
+  }
+}
+
+,
     calculateTotal(type) {
       return this.tracker
         .filter((item) => item.type === type)
         .reduce((total, item) => total + item.amount, 0);
     },
+
     editItem(item) {
+      console.log("item select", item);
       this.editedIndex = this.tracker.indexOf(item);
       this.editedItem = Object.assign({}, item);
-      this.dialogaddTransaction = true;
+      this.dialog = true;
     },
 
     deleteItem(item) {
-      this.editedIndex = this.tracker.indexOf(item);
-      this.editedItem = Object.assign({}, item);
+      this.idforDelete = item.transaction_id;
+      
+
       this.dialogdeleteTransaction = true;
     },
 
-    deleteItemConfirm() {
-      this.tracker.splice(this.editedIndex, 1);
+    async deleteItemConfirm() {
+            try {
+                const response = await this.axios.delete('http://localhost:9000/transaction/' + this.idforDelete)
+                this.initialize()
+            } catch (error) {
+                console.log(error.message)
+            }
+            this.closeDelete()
+        },
 
-      this.closeDelete();
-    },
+        close() {
+            this.dialogaddTransaction = false
+            this.editedItem = []
+            this.editedIndex = -1
+            this.defaultItem = {
+              date: "",
+    amount: "",
+    description: "",
+    type: "",
+    category: "",
+    balance: "",
+            }
+        },
+    // editItem(item) {
+    //   this.editedIndex = this.tracker.indexOf(item);
+    //   this.editedItem = Object.assign({}, item);
+    //   this.dialogaddTransaction = true;
+    // },
 
-    close() {
-      if (this.menu) {
-        this.menu = false;
-      }
-      this.dialogaddTransaction = false;
-      this.$nextTick(() => {
-        this.editedItem = Object.assign({}, this.defaultItem);
-        this.editedIndex = -1;
-      });
-    },
+    // deleteItem(item) {
+    //   this.editedIndex = this.tracker.indexOf(item);
+    //   this.editedItem = Object.assign({}, item);
+    //   this.dialogdeleteTransaction = true;
+    // },
+
+    // deleteItemConfirm() {
+    //   this.tracker.splice(this.editedIndex, 1);
+
+    //   this.closeDelete();
+    // },
+
+    // close() {
+    //   if (this.menu) {
+    //     this.menu = false;
+    //   }
+    //   this.dialogaddTransaction = false;
+    //   this.$nextTick(() => {
+    //     this.editedItem = Object.assign({}, this.defaultItem);
+    //     this.editedIndex = -1;
+    //   });
+    // },
 
     closeDelete() {
       this.dialogdeleteTransaction = false;
@@ -383,26 +452,53 @@ export default {
       this.totalSavings = totalSavings;
       this.totalBalance = totalIncome - totalExpense - totalSavings;
     },
-    save() {
-      // ตรวจสอบว่าทุกข้อมูลถูกกรอกครบ
-      if (
-        this.editedItem.date &&
-        this.editedItem.amount &&
-        this.editedItem.type &&
-        this.editedItem.category
-      ) {
-        this.editedItem.amount = parseFloat(this.editedItem.amount);
 
-        if (this.editedIndex > -1) {
-          Object.assign(this.tracker[this.editedIndex], this.editedItem);
-        } else {
-          this.tracker.push(this.editedItem);
-        }
+    async save(action) {
+  const data = {
+    transaction_id: this.transaction_id,
+    user_id: this.user_id,
+    date: this.date,
+    amount: this.amount,
+    description: this.description,
+    type: this.type,
+    category: this.category
+  };
+  try {
+    if (action === 'เพิ่มข้อมูล') {
+      const response = await this.axios.post('http://localhost:9000/transaction', data);
+      console.log('Data added:', response.data);
+    } else {
+      const response = await this.axios.put('http://localhost:9000/transaction/' + this.transaction_id, data);
+      console.log('Data updated:', response.data);
+    }
+    this.close();
+    this.initialize();
+  } catch (error) {
+    console.error('Error:', error);
+  }
+}
 
-        this.close();
-      } 
-      
-    },
+
+
+    // save() {
+    //   // ตรวจสอบว่าทุกข้อมูลถูกกรอกครบ
+    //   if (
+    //     this.editedItem.date &&
+    //     this.editedItem.amount &&
+    //     this.editedItem.type &&
+    //     this.editedItem.category
+    //   ) {
+    //     this.editedItem.amount = parseFloat(this.editedItem.amount);
+
+    //     if (this.editedIndex > -1) {
+    //       Object.assign(this.tracker[this.editedIndex], this.editedItem);
+    //     } else {
+    //       this.tracker.push(this.editedItem);
+    //     }
+
+    //     this.close();
+    //   }
+    // },
   },
 };
 </script>
